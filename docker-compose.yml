@@ -23,6 +23,9 @@ services:
       DATABASE_URL: postgres://dev:dev@db:5432/orcamento
     volumes:
       - .:/app
+      - /app/node_modules
+    command: npm run start:dev
+    working_dir: /app
 
 volumes:
   pgdata:
