@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateClienteDto } from './dto/create-cliente.dto';
 import { UpdateClienteDto } from './dto/update-cliente.dto';
@@ -15,15 +16,39 @@ export class ClientesService {
     return this.prisma.cliente.findMany();
   }
 
-  findOne(id: number) {
-    return this.prisma.cliente.findUnique({ where: { id } });
+  async findOne(id: number) {
+    const cliente = await this.prisma.cliente.findUnique({ where: { id } });
+    if (!cliente) {
+      throw new NotFoundException(`Cliente com ID ${id} não encontrado.`);
+    }
+    return cliente;
   }
 
-  update(id: number, data: UpdateClienteDto) {
-    return this.prisma.cliente.update({ where: { id }, data });
+  async update(id: number, data: UpdateClienteDto) {
+    try {
+      return await this.prisma.cliente.update({ where: { id }, data });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException(`Cliente com ID ${id} não encontrado.`);
+      }
+      throw error;
+    }
   }
 
-  remove(id: number) {
-    return this.prisma.cliente.delete({ where: { id } });
+  async remove(id: number) {
+    try {
+      return await this.prisma.cliente.delete({ where: { id } });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException(`Cliente com ID ${id} não encontrado.`);
+      }
+      throw error;
+    }
   }
 }
