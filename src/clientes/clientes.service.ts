@@ -12,8 +12,7 @@ export class ClientesService {
   }
 
   findAll() {
-    return 'testessssssssssssssssss';
-    // return this.prisma.cliente.findMany();
+    return this.prisma.cliente.findMany();
   }
 
   findOne(id: number) {
