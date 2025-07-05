@@ -158,8 +158,6 @@ model ItemVersao {
 ### 2. Docker Compose (PostgreSQL 16 + NestJS backend com Node 22)
 ```yaml
 # docker-compose.yml
-version: '3.8'
-
 services:
   db:
     image: postgres:16
@@ -185,13 +183,15 @@ services:
       DATABASE_URL: postgres://dev:dev@db:5432/orcamento
     volumes:
       - .:/app
+      - /app/node_modules
+    command: npm run start:dev
+    working_dir: /app
 
 volumes:
   pgdata:
 ```
 
 ---
-
 ### 3. DevContainer (para VS Code)
 Crie uma pasta chamada `.devcontainer/` na raiz do projeto com os arquivos abaixo:
 
@@ -247,65 +247,130 @@ $ npm run start:dev
 
 ---
 
-✅ Ambiente DevContainer configurado.
-Me avise quando quiser que eu implemente os controllers e services para seguir a aplicação!
 
----
+### 7. Módulo Orcamentos (NestJS)
 
-### 3. DevContainer (para VS Code)
-Crie uma pasta chamada `.devcontainer/` na raiz do projeto com os arquivos abaixo:
+#### Gerar recurso
+```bash
+npx nest g resource orcamentos
+```
 
-#### `.devcontainer/devcontainer.json`
-```json
-{
-  "name": "Orcamento NestJS",
-  "dockerComposeFile": ["../docker-compose.yml"],
-  "service": "backend",
-  "workspaceFolder": "/app",
-  "settings": {
-    "terminal.integrated.defaultProfile.linux": "bash"
-  },
-  "extensions": [
-    "esbenp.prettier-vscode",
-    "Prisma.prisma",
-    "dbaeumer.vscode-eslint"
-  ],
-  "postCreateCommand": "npm install"
+#### DTOs
+```ts
+// create-orcamento.dto.ts
+export class CreateOrcamentoDto {
+  clienteId: number;
+  dataEvento: string; // ISO string
+  localEvento: string;
+  numeroPessoas: number;
+}
+
+// update-orcamento.dto.ts
+import { PartialType } from '@nestjs/mapped-types';
+import { CreateOrcamentoDto } from './create-orcamento.dto';
+
+export class UpdateOrcamentoDto extends PartialType(CreateOrcamentoDto) {}
+```
+
+#### Service (`orcamentos.service.ts`)
+```ts
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
+import { PrismaService } from '../prisma.service';
+import { CreateOrcamentoDto } from './dto/create-orcamento.dto';
+import { UpdateOrcamentoDto } from './dto/update-orcamento.dto';
+
+@Injectable()
+export class OrcamentosService {
+  constructor(private prisma: PrismaService) {}
+
+  async create(data: CreateOrcamentoDto) {
+    const orcamento = await this.prisma.orcamento.create({
+      data: {
+        clienteId: data.clienteId,
+        dataEvento: new Date(data.dataEvento),
+        localEvento: data.localEvento,
+        numeroPessoas: data.numeroPessoas,
+      },
+    });
+
+    await this.prisma.versaoOrcamento.create({
+      data: {
+        orcamentoId: orcamento.id,
+        numero: 1,
+      },
+    });
+
+    return orcamento;
+  }
+
+  findAll() {
+    return this.prisma.orcamento.findMany({ include: { versoes: true } });
+  }
+
+  async findOne(id: number) {
+    const orcamento = await this.prisma.orcamento.findUnique({
+      where: { id },
+      include: { versoes: { include: { itens: true } } },
+    });
+    if (!orcamento) {
+      throw new NotFoundException(`Orçamento com ID ${id} não encontrado.`);
+    }
+    return orcamento;
+  }
+
+  async update(id: number, data: UpdateOrcamentoDto) {
+    try {
+      return await this.prisma.orcamento.update({
+        where: { id },
+        data: {
+          ...data,
+          dataEvento: data.dataEvento ? new Date(data.dataEvento) : undefined,
+        },
+      });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException(`Orçamento com ID ${id} não encontrado.`);
+      }
+      throw error;
+    }
+  }
+
+  async remove(id: number) {
+    try {
+      return await this.prisma.orcamento.delete({ where: { id } });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
+        throw new NotFoundException(`Orçamento com ID ${id} não encontrado.`);
+      }
+      throw error;
+    }
+  }
 }
 ```
 
----
-
-### 4. Instruções para rodar (com ou sem DevContainer)
+#### Testes com cURL
 ```bash
-# 1. Clonar projeto
-$ git clone <projeto-url>
-$ cd <projeto>
+# Criar orçamento
+curl -X POST http://localhost:3000/orcamentos \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "clienteId": 1,
+    "dataEvento": "2025-08-01T18:00:00.000Z",
+    "localEvento": "Salão Azul",
+    "numeroPessoas": 100
+  }'
 
-# 2. Instalar dependências (localmente ou dentro do container)
-$ npm install
-
-# 3. Subir containers
-$ docker-compose up -d --build
-
-# 4. Rodar migração inicial do Prisma (após entrar no container)
-$ npx prisma migrate dev --name init
-
-# 5. Iniciar backend manualmente (caso queira fora do container)
-$ npm run start:dev
+# Listar orçamentos
+curl http://localhost:3000/orcamentos
 ```
 
 ---
 
-### 5. Proximos passos
-- Criar os services, controllers e DTOs no NestJS
-- Criar endpoints:
-  - POST /clientes
-  - POST /orcamentos (cria com versao 1)
-  - POST /orcamentos/:id/versoes (nova versao)
-  - GET /orcamentos/:id (listar com versoes)
-
----
-
-✅ Ambiente DevContainer configurado.
-Me avise quando quiser que eu implemente os controllers e services para seguir a aplicação!
+(Próximo: módulo de versões e itens, com POST para adicionar novas versões a um orçamento já criado.)
