@@ -41,12 +41,24 @@ model VersaoOrcamento {
   itens        ItemVersao[]
 }
 
+model Item {
+  id            Int          @id @default(autoincrement())
+  descricao     String
+  unidade       String?
+  valorPadrao   Float?
+  criadoEm      DateTime     @default(now())
+  atualizadoEm  DateTime     @updatedAt
+  itensVersao   ItemVersao[]
+}
+
 model ItemVersao {
   id                Int               @id @default(autoincrement())
   versaoOrcamentoId Int
+  itemId            Int?              // Referência opcional ao catálogo
   descricao         String
   quantidade        Int
   unidade           String?
   valorUnitario     Float
   versao            VersaoOrcamento  @relation(fields: [versaoOrcamentoId], references: [id])
+  item              Item?            @relation(fields: [itemId], references: [id])
 }

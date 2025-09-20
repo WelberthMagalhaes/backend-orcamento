@@ -9,7 +9,9 @@ describe('VersoesOrcamentoController', () => {
       controllers: [VersoesOrcamentoController],
     }).compile();
 
-    controller = module.get<VersoesOrcamentoController>(VersoesOrcamentoController);
+    controller = module.get<VersoesOrcamentoController>(
+      VersoesOrcamentoController,
+    );
   });
 
   it('should be defined', () => {

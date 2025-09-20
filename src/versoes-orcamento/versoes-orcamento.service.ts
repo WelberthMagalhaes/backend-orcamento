@@ -1,10 +1,12 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateVersaoOrcamentoDto } from './dto/create-versao-orcamento.dto';
+import { AddItemFromCatalogDto } from './dto/add-item-from-catalog.dto';
+import { CreateCustomItemDto } from './dto/create-custom-item.dto';
 
 @Injectable()
 export class VersoesOrcamentoService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private readonly prisma: PrismaService) {}
 
   async criarNovaVersao(orcamentoId: number, dto: CreateVersaoOrcamentoDto) {
     const orcamento = await this.prisma.orcamento.findUnique({
@@ -43,5 +45,61 @@ export class VersoesOrcamentoService {
     }
 
     return novaVersao;
+  }
+
+  async adicionarItemDoCatalogo(versaoId: number, dto: AddItemFromCatalogDto) {
+    const item = await this.prisma.item.findUnique({
+      where: { id: dto.itemId },
+    });
+
+    if (!item) {
+      throw new NotFoundException('Item não encontrado no catálogo');
+    }
+
+    return this.prisma.itemVersao.create({
+      data: {
+        versaoOrcamentoId: versaoId,
+        itemId: dto.itemId,
+        descricao: item.descricao,
+        quantidade: dto.quantidade,
+        unidade: item.unidade,
+        valorUnitario: dto.valorUnitario ?? item.valorPadrao ?? 0,
+      },
+    });
+  }
+
+  async adicionarItemCustomizado(versaoId: number, dto: CreateCustomItemDto) {
+    let itemId: number | null = null;
+
+    if (dto.salvarNoCatalogo) {
+      const novoItem = await this.prisma.item.create({
+        data: {
+          descricao: dto.descricao,
+          unidade: dto.unidade,
+          valorPadrao: dto.valorUnitario,
+        },
+      });
+      itemId = novoItem.id;
+    }
+
+    return this.prisma.itemVersao.create({
+      data: {
+        versaoOrcamentoId: versaoId,
+        itemId,
+        descricao: dto.descricao,
+        quantidade: dto.quantidade,
+        unidade: dto.unidade,
+        valorUnitario: dto.valorUnitario,
+      },
+    });
+  }
+
+  async listarItensVersao(versaoId: number) {
+    return this.prisma.itemVersao.findMany({
+      where: { versaoOrcamentoId: versaoId },
+      include: {
+        item: true, // Inclui dados do catálogo se houver
+      },
+    });
   }
 }

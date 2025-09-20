@@ -1,6 +1,15 @@
-import { Controller, Post, Param, Body, ParseIntPipe } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Param,
+  Body,
+  ParseIntPipe,
+  Get,
+} from '@nestjs/common';
 import { VersoesOrcamentoService } from './versoes-orcamento.service';
 import { CreateVersaoOrcamentoDto } from './dto/create-versao-orcamento.dto';
+import { AddItemFromCatalogDto } from './dto/add-item-from-catalog.dto';
+import { CreateCustomItemDto } from './dto/create-custom-item.dto';
 
 @Controller('orcamentos/:orcamentoId/versoes')
 export class VersoesOrcamentoController {
@@ -12,5 +21,26 @@ export class VersoesOrcamentoController {
     @Body() dto: CreateVersaoOrcamentoDto,
   ) {
     return this.service.criarNovaVersao(orcamentoId, dto);
+  }
+
+  @Post(':versaoId/itens/catalogo')
+  adicionarItemDoCatalogo(
+    @Param('versaoId', ParseIntPipe) versaoId: number,
+    @Body() dto: AddItemFromCatalogDto,
+  ) {
+    return this.service.adicionarItemDoCatalogo(versaoId, dto);
+  }
+
+  @Post(':versaoId/itens/customizado')
+  adicionarItemCustomizado(
+    @Param('versaoId', ParseIntPipe) versaoId: number,
+    @Body() dto: CreateCustomItemDto,
+  ) {
+    return this.service.adicionarItemCustomizado(versaoId, dto);
+  }
+
+  @Get(':versaoId/itens')
+  listarItens(@Param('versaoId', ParseIntPipe) versaoId: number) {
+    return this.service.listarItensVersao(versaoId);
   }
 }
