@@ -3,12 +3,14 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateVersaoOrcamentoDto } from './dto/create-versao-orcamento.dto';
 import { AddItemFromCatalogDto } from './dto/add-item-from-catalog.dto';
 import { CreateCustomItemDto } from './dto/create-custom-item.dto';
+import { VersaoOrcamentoResponseDto, VersaoWithItensDto } from './dto/versao-response.dto';
+import { ItemVersaoResponseDto } from '../items/dto/item-response.dto';
 
 @Injectable()
 export class VersoesOrcamentoService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async criarNovaVersao(orcamentoId: number, dto: CreateVersaoOrcamentoDto) {
+  async criarNovaVersao(orcamentoId: number, dto: CreateVersaoOrcamentoDto): Promise<VersaoOrcamentoResponseDto> {
     const orcamento = await this.prisma.orcamento.findUnique({
       where: { id: orcamentoId },
       include: {
@@ -47,7 +49,7 @@ export class VersoesOrcamentoService {
     return novaVersao;
   }
 
-  async adicionarItemDoCatalogo(versaoId: number, dto: AddItemFromCatalogDto) {
+  async adicionarItemDoCatalogo(versaoId: number, dto: AddItemFromCatalogDto): Promise<ItemVersaoResponseDto> {
     const item = await this.prisma.item.findUnique({
       where: { id: dto.itemId },
     });
@@ -56,7 +58,7 @@ export class VersoesOrcamentoService {
       throw new NotFoundException('Item não encontrado no catálogo');
     }
 
-    return this.prisma.itemVersao.create({
+    const itemVersao = await this.prisma.itemVersao.create({
       data: {
         versaoOrcamentoId: versaoId,
         itemId: dto.itemId,
@@ -66,9 +68,14 @@ export class VersoesOrcamentoService {
         valorUnitario: dto.valorUnitario ?? item.valorPadrao ?? 0,
       },
     });
+
+    return {
+      ...itemVersao,
+      valorTotal: itemVersao.quantidade * itemVersao.valorUnitario,
+    };
   }
 
-  async adicionarItemCustomizado(versaoId: number, dto: CreateCustomItemDto) {
+  async adicionarItemCustomizado(versaoId: number, dto: CreateCustomItemDto): Promise<ItemVersaoResponseDto> {
     let itemId: number | null = null;
 
     if (dto.salvarNoCatalogo) {
@@ -82,7 +89,7 @@ export class VersoesOrcamentoService {
       itemId = novoItem.id;
     }
 
-    return this.prisma.itemVersao.create({
+    const itemVersao = await this.prisma.itemVersao.create({
       data: {
         versaoOrcamentoId: versaoId,
         itemId,
@@ -92,14 +99,47 @@ export class VersoesOrcamentoService {
         valorUnitario: dto.valorUnitario,
       },
     });
+
+    return {
+      ...itemVersao,
+      valorTotal: itemVersao.quantidade * itemVersao.valorUnitario,
+    };
   }
 
-  async listarItensVersao(versaoId: number) {
-    return this.prisma.itemVersao.findMany({
-      where: { versaoOrcamentoId: versaoId },
+  async listarItensVersao(versaoId: number): Promise<VersaoWithItensDto> {
+    const versao = await this.prisma.versaoOrcamento.findUnique({
+      where: { id: versaoId },
       include: {
-        item: true, // Inclui dados do catálogo se houver
+        itens: {
+          include: {
+            item: true,
+          },
+        },
       },
     });
+
+    if (!versao) {
+      throw new NotFoundException('Versão não encontrada');
+    }
+
+    const itens = versao.itens.map(item => ({
+      id: item.id,
+      descricao: item.descricao,
+      quantidade: item.quantidade,
+      unidade: item.unidade,
+      valorUnitario: item.valorUnitario,
+      valorTotal: item.quantidade * item.valorUnitario,
+    }));
+
+    const valorTotalVersao = itens.reduce((total, item) => total + item.valorTotal, 0);
+
+    return {
+      id: versao.id,
+      orcamentoId: versao.orcamentoId,
+      numero: versao.numero,
+      criadaEm: versao.criadaEm,
+      itens,
+      valorTotalVersao,
+    };
   }
 }

@@ -93,6 +93,78 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 - Website - [https://nestjs.com](https://nestjs.com/)
 - Twitter - [@nestframework](https://twitter.com/nestframework)
 
+## 📊 Arquitetura do Projeto
+
+### Modelo de Dados
+```mermaid
+erDiagram
+    Cliente {
+        int id PK
+        string nome
+        string telefone
+        string email
+    }
+    
+    Orcamento {
+        int id PK
+        int clienteId FK
+        datetime dataEvento
+        string localEvento
+        int numeroPessoas
+        string status
+    }
+    
+    VersaoOrcamento {
+        int id PK
+        int orcamentoId FK
+        int numero
+        datetime criadaEm
+    }
+    
+    Item {
+        int id PK
+        string descricao
+        string unidade
+        float valorPadrao
+    }
+    
+    ItemVersao {
+        int id PK
+        int versaoOrcamentoId FK
+        int itemId FK
+        string descricao
+        int quantidade
+        float valorUnitario
+    }
+    
+    Cliente ||--o{ Orcamento : "possui"
+    Orcamento ||--o{ VersaoOrcamento : "tem versões"
+    VersaoOrcamento ||--o{ ItemVersao : "contém itens"
+    Item ||--o{ ItemVersao : "referencia"
+```
+
+### Fluxo de Negócio
+```mermaid
+flowchart TD
+    START([Início]) --> CADASTRO_CLIENTE[Cadastrar Cliente]
+    CADASTRO_CLIENTE --> CRIAR_ORCAMENTO[Criar Orçamento]
+    
+    CRIAR_ORCAMENTO --> VERSAO_1[Versão 1 Criada<br/>Automaticamente]
+    VERSAO_1 --> ADD_ITEMS[Adicionar Itens]
+    
+    ADD_ITEMS --> RASCUNHO{Status: Rascunho}
+    RASCUNHO --> ENVIAR[Enviar para Cliente]
+    ENVIAR --> ENVIADO[Status: Enviado<br/>Versão Congelada]
+    
+    ENVIADO --> APROVADO[Cliente Aprova]
+    ENVIADO --> ALTERACAO[Solicita Alterações]
+    
+    ALTERACAO --> NOVA_VERSAO[Nova Versão]
+    NOVA_VERSAO --> ADD_ITEMS
+    
+    APROVADO --> FIM([Fim])
+```
+
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).

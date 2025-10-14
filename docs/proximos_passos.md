@@ -3,8 +3,8 @@
 ## Backend (NestJS)
 - [x] Estrutura inicial do NestJS criada.
 - [x] Módulos de **clientes** e **orçamentos**.
-- [ ] Criar **módulo de versões de orçamento**.
-- [ ] Implementar DTOs de entrada/saída para cada módulo.
+- [x] Criar **módulo de versões de orçamento**.
+- [x] Implementar DTOs de entrada/saída para cada módulo.
 - [ ] Adicionar autenticação de usuários (login + JWT).
 - [ ] Adicionar permissões por usuário (admin / usuário comum).
 

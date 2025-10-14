@@ -1,31 +1,39 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { ItemResponseDto } from './dto/item-response.dto';
 
 @Injectable()
 export class ItemsService {
   constructor(private prisma: PrismaService) {}
 
-  create(createItemDto: CreateItemDto) {
+  async create(createItemDto: CreateItemDto): Promise<ItemResponseDto> {
     return this.prisma.item.create({
       data: createItemDto,
     });
   }
 
-  findAll() {
+  async findAll(): Promise<ItemResponseDto[]> {
     return this.prisma.item.findMany({
       orderBy: { descricao: 'asc' },
     });
   }
 
-  findOne(id: number) {
-    return this.prisma.item.findUnique({
+  async findOne(id: number): Promise<ItemResponseDto> {
+    const item = await this.prisma.item.findUnique({
       where: { id },
     });
+    if (!item) {
+      throw new NotFoundException(`Item com ID ${id} não encontrado.`);
+    }
+    return item;
   }
 
-  update(id: number, updateItemDto: UpdateItemDto) {
+  async update(
+    id: number,
+    updateItemDto: UpdateItemDto,
+  ): Promise<ItemResponseDto> {
     return this.prisma.item.update({
       where: { id },
       data: updateItemDto,

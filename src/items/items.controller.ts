@@ -1,29 +1,41 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
 import { ItemsService } from './items.service';
 import { CreateItemDto } from './dto/create-item.dto';
 import { UpdateItemDto } from './dto/update-item.dto';
+import { ItemResponseDto } from './dto/item-response.dto';
 
 @Controller('items')
 export class ItemsController {
   constructor(private readonly itemsService: ItemsService) {}
 
   @Post()
-  create(@Body() createItemDto: CreateItemDto) {
+  create(@Body() createItemDto: CreateItemDto): Promise<ItemResponseDto> {
     return this.itemsService.create(createItemDto);
   }
 
   @Get()
-  findAll() {
+  findAll(): Promise<ItemResponseDto[]> {
     return this.itemsService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string): Promise<ItemResponseDto> {
     return this.itemsService.findOne(+id);
   }
 
   @Patch(':id')
-  update(@Param('id') id: string, @Body() updateItemDto: UpdateItemDto) {
+  update(
+    @Param('id') id: string,
+    @Body() updateItemDto: UpdateItemDto,
+  ): Promise<ItemResponseDto> {
     return this.itemsService.update(+id, updateItemDto);
   }
 

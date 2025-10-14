@@ -10,23 +10,29 @@ import {
 import { OrcamentosService } from './orcamentos.service';
 import { CreateOrcamentoDto } from './dto/create-orcamento.dto';
 import { UpdateOrcamentoDto } from './dto/update-orcamento.dto';
+import {
+  OrcamentoResponseDto,
+  OrcamentoWithVersoesDto,
+} from './dto/orcamento-response.dto';
 
 @Controller('orcamentos')
 export class OrcamentosController {
   constructor(private readonly orcamentosService: OrcamentosService) {}
 
   @Post()
-  create(@Body() createOrcamentoDto: CreateOrcamentoDto) {
+  create(
+    @Body() createOrcamentoDto: CreateOrcamentoDto,
+  ): Promise<OrcamentoResponseDto> {
     return this.orcamentosService.create(createOrcamentoDto);
   }
 
   @Get()
-  findAll() {
+  findAll(): Promise<OrcamentoResponseDto[]> {
     return this.orcamentosService.findAll();
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
+  findOne(@Param('id') id: string): Promise<OrcamentoWithVersoesDto> {
     return this.orcamentosService.findOne(+id);
   }
 
@@ -34,7 +40,7 @@ export class OrcamentosController {
   update(
     @Param('id') id: string,
     @Body() updateOrcamentoDto: UpdateOrcamentoDto,
-  ) {
+  ): Promise<OrcamentoResponseDto> {
     return this.orcamentosService.update(+id, updateOrcamentoDto);
   }
 
