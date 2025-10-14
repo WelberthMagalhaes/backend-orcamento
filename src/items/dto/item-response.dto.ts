@@ -10,10 +10,10 @@ export class ItemResponseDto {
 export class ItemVersaoResponseDto {
   id: number;
   versaoOrcamentoId: number;
-  itemId?: number;
+  itemId?: number | null;
   descricao: string;
   quantidade: number;
-  unidade?: string;
+  unidade?: string | null;
   valorUnitario: number;
   valorTotal: number;
 }

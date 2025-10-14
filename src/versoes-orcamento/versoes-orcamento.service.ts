@@ -3,14 +3,21 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateVersaoOrcamentoDto } from './dto/create-versao-orcamento.dto';
 import { AddItemFromCatalogDto } from './dto/add-item-from-catalog.dto';
 import { CreateCustomItemDto } from './dto/create-custom-item.dto';
-import { VersaoOrcamentoResponseDto, VersaoWithItensDto } from './dto/versao-response.dto';
+import { UpdateItemVersaoDto } from './dto/update-item-versao.dto';
+import {
+  VersaoOrcamentoResponseDto,
+  VersaoWithItensDto,
+} from './dto/versao-response.dto';
 import { ItemVersaoResponseDto } from '../items/dto/item-response.dto';
 
 @Injectable()
 export class VersoesOrcamentoService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async criarNovaVersao(orcamentoId: number, dto: CreateVersaoOrcamentoDto): Promise<VersaoOrcamentoResponseDto> {
+  async criarNovaVersao(
+    orcamentoId: number,
+    dto: CreateVersaoOrcamentoDto,
+  ): Promise<VersaoOrcamentoResponseDto> {
     const orcamento = await this.prisma.orcamento.findUnique({
       where: { id: orcamentoId },
       include: {
@@ -49,7 +56,10 @@ export class VersoesOrcamentoService {
     return novaVersao;
   }
 
-  async adicionarItemDoCatalogo(versaoId: number, dto: AddItemFromCatalogDto): Promise<ItemVersaoResponseDto> {
+  async adicionarItemDoCatalogo(
+    versaoId: number,
+    dto: AddItemFromCatalogDto,
+  ): Promise<ItemVersaoResponseDto> {
     const item = await this.prisma.item.findUnique({
       where: { id: dto.itemId },
     });
@@ -75,7 +85,10 @@ export class VersoesOrcamentoService {
     };
   }
 
-  async adicionarItemCustomizado(versaoId: number, dto: CreateCustomItemDto): Promise<ItemVersaoResponseDto> {
+  async adicionarItemCustomizado(
+    versaoId: number,
+    dto: CreateCustomItemDto,
+  ): Promise<ItemVersaoResponseDto> {
     let itemId: number | null = null;
 
     if (dto.salvarNoCatalogo) {
@@ -122,7 +135,7 @@ export class VersoesOrcamentoService {
       throw new NotFoundException('Versão não encontrada');
     }
 
-    const itens = versao.itens.map(item => ({
+    const itens = versao.itens.map((item) => ({
       id: item.id,
       descricao: item.descricao,
       quantidade: item.quantidade,
@@ -131,7 +144,10 @@ export class VersoesOrcamentoService {
       valorTotal: item.quantidade * item.valorUnitario,
     }));
 
-    const valorTotalVersao = itens.reduce((total, item) => total + item.valorTotal, 0);
+    const valorTotalVersao = itens.reduce(
+      (total, item) => total + item.valorTotal,
+      0,
+    );
 
     return {
       id: versao.id,
@@ -141,5 +157,46 @@ export class VersoesOrcamentoService {
       itens,
       valorTotalVersao,
     };
+  }
+
+  async listarVersoesPorOrcamento(
+    orcamentoId: number,
+  ): Promise<VersaoOrcamentoResponseDto[]> {
+    return this.prisma.versaoOrcamento.findMany({
+      where: { orcamentoId },
+      orderBy: { numero: 'asc' },
+    });
+  }
+
+  async buscarVersao(versaoId: number): Promise<VersaoWithItensDto> {
+    return this.listarItensVersao(versaoId);
+  }
+
+  async atualizarItemVersao(
+    versaoId: number,
+    itemId: number,
+    dto: UpdateItemVersaoDto,
+  ): Promise<ItemVersaoResponseDto> {
+    const itemVersao = await this.prisma.itemVersao.update({
+      where: {
+        id: itemId,
+        versaoOrcamentoId: versaoId,
+      },
+      data: dto,
+    });
+
+    return {
+      ...itemVersao,
+      valorTotal: itemVersao.quantidade * itemVersao.valorUnitario,
+    };
+  }
+
+  async removerItemVersao(versaoId: number, itemId: number): Promise<void> {
+    await this.prisma.itemVersao.delete({
+      where: {
+        id: itemId,
+        versaoOrcamentoId: versaoId,
+      },
+    });
   }
 }

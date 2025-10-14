@@ -10,7 +10,7 @@ export class VersaoWithItensDto extends VersaoOrcamentoResponseDto {
     id: number;
     descricao: string;
     quantidade: number;
-    unidade?: string;
+    unidade?: string | null;
     valorUnitario: number;
     valorTotal: number;
   }[];
