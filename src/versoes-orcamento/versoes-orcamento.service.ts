@@ -185,7 +185,7 @@ export class VersoesOrcamentoService {
       id: versao.id,
       orcamentoId: versao.orcamentoId,
       numero: versao.numero,
-      status: versao.status as string,
+      status: versao.status,
       criadaEm: versao.criadaEm,
       itens,
       valorTotalVersao,
