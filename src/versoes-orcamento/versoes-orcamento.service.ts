@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateVersaoOrcamentoDto } from './dto/create-versao-orcamento.dto';
 import { AddItemFromCatalogDto } from './dto/add-item-from-catalog.dto';
@@ -13,6 +17,23 @@ import { ItemVersaoResponseDto } from '../items/dto/item-response.dto';
 @Injectable()
 export class VersoesOrcamentoService {
   constructor(private readonly prisma: PrismaService) {}
+
+  private async verificarVersaoEditavel(versaoId: number): Promise<void> {
+    const versao = await this.prisma.versaoOrcamento.findUnique({
+      where: { id: versaoId },
+      select: { status: true },
+    });
+
+    if (!versao) {
+      throw new NotFoundException('Versão não encontrada');
+    }
+
+    if (versao.status !== 'rascunho') {
+      throw new BadRequestException(
+        'Versão congelada - apenas versões em rascunho podem ser editadas',
+      );
+    }
+  }
 
   async criarNovaVersao(
     orcamentoId: number,
@@ -67,6 +88,8 @@ export class VersoesOrcamentoService {
     versaoId: number,
     dto: AddItemFromCatalogDto,
   ): Promise<ItemVersaoResponseDto> {
+    await this.verificarVersaoEditavel(versaoId);
+
     const item = await this.prisma.item.findUnique({
       where: { id: dto.itemId },
     });
@@ -96,6 +119,8 @@ export class VersoesOrcamentoService {
     versaoId: number,
     dto: CreateCustomItemDto,
   ): Promise<ItemVersaoResponseDto> {
+    await this.verificarVersaoEditavel(versaoId);
+
     let itemId: number | null = null;
 
     if (dto.salvarNoCatalogo) {
@@ -185,6 +210,8 @@ export class VersoesOrcamentoService {
     itemId: number,
     dto: UpdateItemVersaoDto,
   ): Promise<ItemVersaoResponseDto> {
+    await this.verificarVersaoEditavel(versaoId);
+
     const itemVersao = await this.prisma.itemVersao.update({
       where: {
         id: itemId,
@@ -200,6 +227,8 @@ export class VersoesOrcamentoService {
   }
 
   async removerItemVersao(versaoId: number, itemId: number): Promise<void> {
+    await this.verificarVersaoEditavel(versaoId);
+
     await this.prisma.itemVersao.delete({
       where: {
         id: itemId,
@@ -227,8 +256,23 @@ export class VersoesOrcamentoService {
     });
   }
 
-  async aprovarVersao(versaoId: number): Promise<VersaoOrcamentoResponseDto> {
-    return this.prisma.versaoOrcamento.update({
+  async aprovarVersao(orcamentoId: number, versaoId: number): Promise<void> {
+    // Regra de negócio: não permitir duas versões aprovadas
+    const versaoAprovada = await this.prisma.versaoOrcamento.findFirst({
+      where: {
+        orcamentoId,
+        status: 'aprovada',
+        id: { not: versaoId },
+      },
+    });
+
+    if (versaoAprovada) {
+      throw new BadRequestException(
+        'Já existe uma versão aprovada para este orçamento',
+      );
+    }
+
+    await this.prisma.versaoOrcamento.update({
       where: { id: versaoId },
       data: { status: 'aprovada' },
     });

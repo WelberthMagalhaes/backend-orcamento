@@ -94,9 +94,10 @@ export class VersoesOrcamentoController {
 
   @Post(':versaoId/aprovar')
   aprovarVersao(
+    @Param('orcamentoId', ParseIntPipe) orcamentoId: number,
     @Param('versaoId', ParseIntPipe) versaoId: number,
-  ): Promise<VersaoOrcamentoResponseDto> {
-    return this.service.aprovarVersao(versaoId);
+  ): Promise<void> {
+    return this.service.aprovarVersao(orcamentoId, versaoId);
   }
 
   @Post(':versaoId/rejeitar')
