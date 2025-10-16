@@ -13,6 +13,8 @@ import { CreateVersaoOrcamentoDto } from './dto/create-versao-orcamento.dto';
 import { AddItemFromCatalogDto } from './dto/add-item-from-catalog.dto';
 import { CreateCustomItemDto } from './dto/create-custom-item.dto';
 import { UpdateItemVersaoDto } from './dto/update-item-versao.dto';
+import { ReabrirVersaoDto } from './dto/reabrir-versao.dto';
+import { AprovarVersaoDto } from './dto/aprovar-versao.dto';
 import {
   VersaoOrcamentoResponseDto,
   VersaoWithItensDto,
@@ -96,14 +98,30 @@ export class VersoesOrcamentoController {
   aprovarVersao(
     @Param('orcamentoId', ParseIntPipe) orcamentoId: number,
     @Param('versaoId', ParseIntPipe) versaoId: number,
+    @Body() body?: AprovarVersaoDto,
   ): Promise<void> {
-    return this.service.aprovarVersao(orcamentoId, versaoId);
+    return this.service.aprovarVersao(orcamentoId, versaoId, body?.usuarioId);
   }
 
   @Post(':versaoId/rejeitar')
   rejeitarVersao(
     @Param('versaoId', ParseIntPipe) versaoId: number,
+    @Body() body?: AprovarVersaoDto,
   ): Promise<VersaoOrcamentoResponseDto> {
-    return this.service.rejeitarVersao(versaoId);
+    return this.service.rejeitarVersao(versaoId, body?.usuarioId);
+  }
+
+  @Post(':versaoId/reabrir')
+  reabrirVersao(
+    @Param('orcamentoId', ParseIntPipe) orcamentoId: number,
+    @Param('versaoId', ParseIntPipe) versaoId: number,
+    @Body() body: ReabrirVersaoDto,
+  ): Promise<void> {
+    return this.service.reabrirVersao(orcamentoId, versaoId, body);
+  }
+
+  @Get(':versaoId/historico')
+  getHistorico(@Param('versaoId', ParseIntPipe) versaoId: number) {
+    return this.service.getHistorico(versaoId);
   }
 }

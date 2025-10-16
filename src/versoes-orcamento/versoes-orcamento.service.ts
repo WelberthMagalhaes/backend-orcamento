@@ -8,6 +8,8 @@ import { CreateVersaoOrcamentoDto } from './dto/create-versao-orcamento.dto';
 import { AddItemFromCatalogDto } from './dto/add-item-from-catalog.dto';
 import { CreateCustomItemDto } from './dto/create-custom-item.dto';
 import { UpdateItemVersaoDto } from './dto/update-item-versao.dto';
+import { ReabrirVersaoDto } from './dto/reabrir-versao.dto';
+import { HistoricoVersaoResponseDto } from './dto/historico-versao-response.dto';
 import {
   VersaoOrcamentoResponseDto,
   VersaoWithItensDto,
@@ -256,32 +258,132 @@ export class VersoesOrcamentoService {
     });
   }
 
-  async aprovarVersao(orcamentoId: number, versaoId: number): Promise<void> {
-    // Regra de negócio: não permitir duas versões aprovadas
+  async aprovarVersao(
+    orcamentoId: number,
+    versaoId: number,
+    usuarioId?: number,
+  ): Promise<void> {
+    const versaoAtual = await this.prisma.versaoOrcamento.findUnique({
+      where: { id: versaoId },
+    });
+
+    if (!versaoAtual) {
+      throw new BadRequestException('Versão não encontrada');
+    }
+
+    if (versaoAtual.status !== 'enviada') {
+      throw new BadRequestException(
+        'Apenas versões com status "enviada" podem ser aprovadas',
+      );
+    }
+
     const versaoAprovada = await this.prisma.versaoOrcamento.findFirst({
-      where: {
-        orcamentoId,
-        status: 'aprovada',
-        id: { not: versaoId },
-      },
+      where: { orcamentoId, status: 'aprovada', id: { not: versaoId } },
     });
 
     if (versaoAprovada) {
       throw new BadRequestException(
-        'Já existe uma versão aprovada para este orçamento',
+        'Já existe uma versão aprovada para este orçamento. Reabra a versão anterior antes de aprovar outra.',
       );
     }
 
-    await this.prisma.versaoOrcamento.update({
-      where: { id: versaoId },
-      data: { status: 'aprovada' },
+    await this.prisma.$transaction(async (tx) => {
+      await tx.versaoOrcamento.update({
+        where: { id: versaoId },
+        data: { status: 'aprovada' },
+      });
+
+      await tx.historicoVersao.create({
+        data: {
+          versaoId,
+          statusAnterior: versaoAtual.status,
+          statusNovo: 'aprovada',
+          usuarioId,
+        },
+      });
     });
   }
 
-  async rejeitarVersao(versaoId: number): Promise<VersaoOrcamentoResponseDto> {
-    return this.prisma.versaoOrcamento.update({
+  async rejeitarVersao(
+    versaoId: number,
+    usuarioId?: number,
+  ): Promise<VersaoOrcamentoResponseDto> {
+    const versaoAtual = await this.prisma.versaoOrcamento.findUnique({
       where: { id: versaoId },
-      data: { status: 'rejeitada' },
+    });
+
+    if (!versaoAtual) {
+      throw new BadRequestException('Versão não encontrada');
+    }
+
+    if (versaoAtual.status !== 'enviada') {
+      throw new BadRequestException(
+        'Apenas versões com status "enviada" podem ser rejeitadas',
+      );
+    }
+
+    const resultado = await this.prisma.$transaction(async (tx) => {
+      const versaoAtualizada = await tx.versaoOrcamento.update({
+        where: { id: versaoId },
+        data: { status: 'rejeitada' },
+      });
+
+      await tx.historicoVersao.create({
+        data: {
+          versaoId,
+          statusAnterior: versaoAtual.status,
+          statusNovo: 'rejeitada',
+          usuarioId,
+        },
+      });
+
+      return versaoAtualizada;
+    });
+
+    return resultado;
+  }
+
+  async reabrirVersao(
+    orcamentoId: number,
+    versaoId: number,
+    dto: ReabrirVersaoDto,
+  ): Promise<void> {
+    const versaoAtual = await this.prisma.versaoOrcamento.findUnique({
+      where: { id: versaoId },
+    });
+
+    if (!versaoAtual) {
+      throw new BadRequestException('Versão não encontrada');
+    }
+
+    if (!['aprovada', 'rejeitada'].includes(versaoAtual.status)) {
+      throw new BadRequestException(
+        'Apenas versões aprovadas ou rejeitadas podem ser reabertas',
+      );
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.versaoOrcamento.update({
+        where: { id: versaoId },
+        data: { status: 'rascunho' },
+      });
+
+      await tx.historicoVersao.create({
+        data: {
+          versaoId,
+          statusAnterior: versaoAtual.status,
+          statusNovo: 'rascunho',
+          motivo: dto.motivo || 'Reaberto para revisão',
+          usuarioId: dto.usuarioId,
+        },
+      });
+    });
+  }
+
+  async getHistorico(versaoId: number): Promise<HistoricoVersaoResponseDto[]> {
+    return await this.prisma.historicoVersao.findMany({
+      where: { versaoId },
+      orderBy: { criadoEm: 'desc' },
     });
   }
 }

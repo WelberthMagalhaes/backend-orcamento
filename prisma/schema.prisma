@@ -43,6 +43,21 @@ model VersaoOrcamento {
   orcamento    Orcamento     @relation(fields: [orcamentoId], references: [id])
   itens        ItemVersao[]
   orcamentoAtivo Orcamento? @relation("VersaoAtiva")
+  historico    HistoricoVersao[]
+}
+
+model HistoricoVersao {
+  id             Int      @id @default(autoincrement())
+  versaoId       Int
+  statusAnterior String?
+  statusNovo     String
+  motivo         String?
+  usuarioId      Int?
+  criadoEm       DateTime @default(now())
+ 
+  versao         VersaoOrcamento @relation(fields: [versaoId], references: [id], onDelete: Cascade)
+
+  @@map("historico_versoes")
 }
 
 model Item {
