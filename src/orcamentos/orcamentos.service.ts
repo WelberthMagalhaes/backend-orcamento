@@ -22,11 +22,18 @@ export class OrcamentosService {
       },
     });
 
-    await this.prisma.versaoOrcamento.create({
+    const primeiraVersao = await this.prisma.versaoOrcamento.create({
       data: {
         orcamentoId: orcamento.id,
         numero: 1,
+        status: 'rascunho',
       },
+    });
+
+    // Definir primeira versão como ativa
+    await this.prisma.orcamento.update({
+      where: { id: orcamento.id },
+      data: { versaoAtivaId: primeiraVersao.id },
     });
 
     return orcamento;

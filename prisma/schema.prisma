@@ -29,16 +29,20 @@ model Orcamento {
   localEvento    String
   numeroPessoas  Int
   status         String           @default("rascunho")
+  versaoAtivaId  Int?             @unique
   versoes        VersaoOrcamento[]
+  versaoAtiva    VersaoOrcamento? @relation("VersaoAtiva", fields: [versaoAtivaId], references: [id])
 }
 
 model VersaoOrcamento {
   id           Int           @id @default(autoincrement())
   orcamentoId  Int
   numero       Int           // Versão 1, 2, etc
+  status       String        @default("rascunho") // rascunho, enviada, aprovada, rejeitada
   criadaEm     DateTime      @default(now())
   orcamento    Orcamento     @relation(fields: [orcamentoId], references: [id])
   itens        ItemVersao[]
+  orcamentoAtivo Orcamento? @relation("VersaoAtiva")
 }
 
 model Item {

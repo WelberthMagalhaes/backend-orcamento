@@ -2,6 +2,7 @@ export class VersaoOrcamentoResponseDto {
   id: number;
   orcamentoId: number;
   numero: number;
+  status: string;
   criadaEm: Date;
 }
 

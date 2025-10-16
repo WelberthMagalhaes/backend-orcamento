@@ -37,11 +37,18 @@ export class VersoesOrcamentoService {
     const novaVersao = await this.prisma.versaoOrcamento.create({
       data: {
         orcamentoId,
-        numero: ultimaVersao.numero + 1,
+        numero: ultimaVersao ? ultimaVersao.numero + 1 : 1,
+        status: 'rascunho',
       },
     });
 
-    if (dto.copiarItens && ultimaVersao.itens.length > 0) {
+    // Definir como versão ativa
+    await this.prisma.orcamento.update({
+      where: { id: orcamentoId },
+      data: { versaoAtivaId: novaVersao.id },
+    });
+
+    if (dto.copiarItens && ultimaVersao?.itens.length > 0) {
       await this.prisma.itemVersao.createMany({
         data: ultimaVersao.itens.map((item) => ({
           versaoOrcamentoId: novaVersao.id,
@@ -153,6 +160,7 @@ export class VersoesOrcamentoService {
       id: versao.id,
       orcamentoId: versao.orcamentoId,
       numero: versao.numero,
+      status: versao.status as string,
       criadaEm: versao.criadaEm,
       itens,
       valorTotalVersao,
@@ -197,6 +205,39 @@ export class VersoesOrcamentoService {
         id: itemId,
         versaoOrcamentoId: versaoId,
       },
+    });
+  }
+
+  async enviarVersao(versaoId: number): Promise<VersaoOrcamentoResponseDto> {
+    const versao = await this.prisma.versaoOrcamento.findUnique({
+      where: { id: versaoId },
+    });
+
+    if (!versao) {
+      throw new NotFoundException('Versão não encontrada');
+    }
+
+    if (versao.status !== 'rascunho') {
+      throw new Error('Apenas versões em rascunho podem ser enviadas');
+    }
+
+    return this.prisma.versaoOrcamento.update({
+      where: { id: versaoId },
+      data: { status: 'enviada' },
+    });
+  }
+
+  async aprovarVersao(versaoId: number): Promise<VersaoOrcamentoResponseDto> {
+    return this.prisma.versaoOrcamento.update({
+      where: { id: versaoId },
+      data: { status: 'aprovada' },
+    });
+  }
+
+  async rejeitarVersao(versaoId: number): Promise<VersaoOrcamentoResponseDto> {
+    return this.prisma.versaoOrcamento.update({
+      where: { id: versaoId },
+      data: { status: 'rejeitada' },
     });
   }
 }

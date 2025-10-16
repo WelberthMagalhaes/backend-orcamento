@@ -84,4 +84,25 @@ export class VersoesOrcamentoController {
   ): Promise<void> {
     return this.service.removerItemVersao(versaoId, itemId);
   }
+
+  @Post(':versaoId/enviar')
+  enviarVersao(
+    @Param('versaoId', ParseIntPipe) versaoId: number,
+  ): Promise<VersaoOrcamentoResponseDto> {
+    return this.service.enviarVersao(versaoId);
+  }
+
+  @Post(':versaoId/aprovar')
+  aprovarVersao(
+    @Param('versaoId', ParseIntPipe) versaoId: number,
+  ): Promise<VersaoOrcamentoResponseDto> {
+    return this.service.aprovarVersao(versaoId);
+  }
+
+  @Post(':versaoId/rejeitar')
+  rejeitarVersao(
+    @Param('versaoId', ParseIntPipe) versaoId: number,
+  ): Promise<VersaoOrcamentoResponseDto> {
+    return this.service.rejeitarVersao(versaoId);
+  }
 }
